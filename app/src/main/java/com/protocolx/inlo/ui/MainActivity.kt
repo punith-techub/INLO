@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -38,14 +39,17 @@ class MainActivity : ComponentActivity() {
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        // Handle granted permissions
+        Log.d("MainActivity", "Permissions callback received: $permissions")
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Request runtime permissions if required (Android 13+ Notification, Calendar)
-        requestRuntimePermissions()
+        try {
+            requestRuntimePermissions()
+        } catch (t: Throwable) {
+            Log.e("MainActivity", "Safe catch during permissions request: ${t.message}")
+        }
 
         setContent {
             INLOTheme {

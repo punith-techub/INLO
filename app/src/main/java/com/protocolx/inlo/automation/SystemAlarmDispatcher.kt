@@ -38,11 +38,9 @@ object SystemAlarmDispatcher {
             if (alarmIntent.resolveActivity(appContext.packageManager) != null) {
                 appContext.startActivity(alarmIntent)
                 Log.d(TAG, "Successfully fired ACTION_SET_ALARM for ${alarmResult.formattedAlarmTime}")
-            } else {
-                Log.w(TAG, "No default clock app resolved ACTION_SET_ALARM, using AlarmManager fallback")
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error launching AlarmClock intent: ${e.message}", e)
+        } catch (t: Throwable) {
+            Log.e(TAG, "Safe catch: launching AlarmClock intent: ${t.message}")
         }
 
         // 2. Schedule precise fallback using AlarmManager
@@ -73,6 +71,12 @@ object SystemAlarmDispatcher {
                             calendar.timeInMillis,
                             pendingIntent
                         )
+                    } else {
+                        alarmManager.setAndAllowWhileIdle(
+                            AlarmManager.RTC_WAKEUP,
+                            calendar.timeInMillis,
+                            pendingIntent
+                        )
                     }
                 } else {
                     alarmManager.setExactAndAllowWhileIdle(
@@ -82,8 +86,8 @@ object SystemAlarmDispatcher {
                     )
                 }
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error scheduling AlarmManager: ${e.message}", e)
+        } catch (t: Throwable) {
+            Log.e(TAG, "Safe catch: AlarmManager scheduling: ${t.message}")
         }
 
         // 3. Persist record in local database
@@ -102,8 +106,8 @@ object SystemAlarmDispatcher {
                 status = AutomationStatus.ACTIVE
             )
             AppDatabase.getInstance(appContext).automationDao().insert(record)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to persist automation record: ${e.message}")
+        } catch (t: Throwable) {
+            Log.e(TAG, "Safe catch: Persisting automation record: ${t.message}")
         }
     }
 }

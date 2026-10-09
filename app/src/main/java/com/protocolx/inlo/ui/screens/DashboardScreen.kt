@@ -1,6 +1,7 @@
 package com.protocolx.inlo.ui.screens
 
 import android.content.Context
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,7 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,6 +49,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.protocolx.inlo.data.model.MicroSummaryCard
 import com.protocolx.inlo.data.model.PriorityTier
 import com.protocolx.inlo.data.model.ScheduledAutomation
@@ -78,8 +82,17 @@ fun DashboardScreen(
     val context = LocalContext.current
     var hasNotificationPermission by remember { mutableStateOf(PermissionHelper.isNotificationAccessGranted(context)) }
 
-    LaunchedEffect(Unit) {
-        hasNotificationPermission = PermissionHelper.isNotificationAccessGranted(context)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                hasNotificationPermission = PermissionHelper.isNotificationAccessGranted(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
     }
 
     Scaffold(
@@ -145,7 +158,6 @@ fun DashboardScreen(
                         Button(
                             onClick = {
                                 PermissionHelper.openNotificationAccessSettings(context)
-                                hasNotificationPermission = PermissionHelper.isNotificationAccessGranted(context)
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = P1Amber),
                             shape = RoundedCornerShape(8.dp)
@@ -175,7 +187,7 @@ fun DashboardScreen(
                 OutlinedButton(
                     onClick = onOpenAlarms,
                     shape = RoundedCornerShape(10.dp),
-                    border = ButtonDefaults.outlinedButtonBorder.copy(brush = androidx.compose.ui.graphics.SolidColor(CardBorder))
+                    border = BorderStroke(1.dp, CardBorder)
                 ) {
                     Icon(Icons.Default.Alarm, contentDescription = null, tint = TextPrimary, modifier = Modifier.height(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))

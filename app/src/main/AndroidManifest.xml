@@ -6,7 +6,6 @@
     <!-- System Notification Interception -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <!-- Alarm & Calendar Automation -->
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
@@ -54,6 +53,11 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+
+        <!-- Alarm Receiver -->
+        <receiver
+            android:name=".automation.AlarmReceiver"
+            android:exported="false" />
     </application>
 
 </manifest>

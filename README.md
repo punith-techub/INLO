@@ -61,41 +61,15 @@ Every notification is instantly sorted into 4 clear levels:
 
 ---
 
-## 🛠️ Tech Stack
-- **Platform:** Native Android (Kotlin 2.0+, JDK 17, Android SDK 34)
-- **UI Framework:** Jetpack Compose + Material 3 (Modern Dark Minimalist Cockpit)
-- **Background Hook:** Android `NotificationListenerService`
-- **Automation APIs:** Android `AlarmClock`, `AlarmManager`, `CalendarContract`
-- **Database:** Encrypted Room SQLite (`androidx.room` + KSP)
-- **Architecture:** MVVM + Coroutines + Kotlin StateFlow
+## 📲 How to Install & Setup
 
----
-
-## 📲 Setup & Installation
-
-### Option 1: Direct APK Install
-1. Connect your Android phone via USB (or transfer the file).
-2. Install the pre-compiled `.apk`:
-   ```bash
-   adb install INLO-v1.0.0.apk
-   ```
-3. Open **INLO** on your phone.
-4. Tap **Enable** on the top banner to grant **Notification Access** in Android Settings.
-5. *(Optional)* Go to ⚙️ **Settings** to adjust your typical commute time, prep time, and manager VIP names.
-
-### Option 2: Build from Source
-```bash
-# Clone the repository
-git clone https://github.com/punith-techub/INLO.git
-cd INLO
-
-# Build Debug APK
-./gradlew assembleDebug
-
-# Run unit tests
-./gradlew testDebugUnitTest
-```
-The compiled APK will be at `app/build/outputs/apk/debug/app-debug.apk`.
+1. **Download the APK:** Click on [**`INLO-v1.0.1.apk`**](INLO-v1.0.1.apk) right here in the repository to download it.
+2. **Install:** Tap the downloaded file on your phone and click **Install**.
+3. **Enable Permission:**
+   - Open **INLO**.
+   - Tap the **Enable** button on the top banner.
+   - In Android Settings, turn **ON** the toggle for **INLO Notification Interceptor**.
+4. **You're all set!** INLO will now automatically organize, summarize, and prioritize all your incoming notifications with zero battery drain and total privacy.
 
 ---
 

@@ -22,57 +22,58 @@ object TemporalSignalExtractor {
     )
 
     fun extractSchedule(text: String): ExtractedSchedule? {
-        val lowerText = text.lowercase()
+        return try {
+            val lowerText = text.lowercase()
 
-        val isTomorrow = lowerText.contains("tomorrow") || lowerText.contains("tmrw") || lowerText.contains("next day")
+            val isTomorrow = lowerText.contains("tomorrow") || lowerText.contains("tmrw") || lowerText.contains("next day")
 
-        // Try primary action time regex
-        val match = TIME_REGEX.find(text) ?: DIRECT_TIME_REGEX.find(text) ?: return null
+            // Try primary action time regex
+            val match = TIME_REGEX.find(text) ?: DIRECT_TIME_REGEX.find(text) ?: return null
 
-        var hour = match.groupValues[1].toIntOrNull() ?: return null
-        val minute = if (match.groupValues.size > 2 && match.groupValues[2].isNotEmpty()) {
-            match.groupValues[2].toIntOrNull() ?: 0
-        } else 0
+            var hour = match.groupValues.getOrNull(1)?.toIntOrNull() ?: return null
+            val minute = match.groupValues.getOrNull(2)?.toIntOrNull() ?: 0
 
-        val amPm = if (match.groupValues.size > 3) match.groupValues[3].lowercase() else ""
+            val amPm = match.groupValues.getOrNull(3)?.lowercase() ?: ""
 
-        // Adjust hour for AM/PM
-        if (amPm == "pm" && hour < 12) {
-            hour += 12
-        } else if (amPm == "am" && hour == 12) {
-            hour = 0
-        } else if (amPm.isEmpty()) {
-            // Contextual inference: work arrival times typically in morning (7..11) or afternoon (12..18)
-            if (hour in 7..11) {
-                // assume AM for morning arrival
-            } else if (hour in 1..6) {
-                // If text mentions "office" or "morning", could be early, but usually work starts morning
-                if (lowerText.contains("morning") || lowerText.contains("early")) {
-                    // AM
-                } else {
-                    hour += 12 // assume PM for 1..6 if not specified
+            // Adjust hour for AM/PM
+            if (amPm == "pm" && hour < 12) {
+                hour += 12
+            } else if (amPm == "am" && hour == 12) {
+                hour = 0
+            } else if (amPm.isEmpty()) {
+                // Contextual inference: work arrival times typically in morning (7..11) or afternoon (12..18)
+                if (hour in 7..11) {
+                    // assume AM for morning arrival
+                } else if (hour in 1..6) {
+                    if (lowerText.contains("morning") || lowerText.contains("early")) {
+                        // AM
+                    } else {
+                        hour += 12 // assume PM for 1..6 if not specified
+                    }
                 }
             }
-        }
 
-        // Location / context detection
-        val location = when {
-            lowerText.contains("office") -> "Office"
-            lowerText.contains("client") -> "Client Meeting"
-            lowerText.contains("site") -> "Site"
-            lowerText.contains("branch") -> "Branch"
-            lowerText.contains("demo") -> "Sprint Demo"
-            lowerText.contains("review") -> "Project Review"
-            lowerText.contains("call") || lowerText.contains("meeting") -> "Meeting"
-            else -> "Work Arrival"
-        }
+            // Location / context detection
+            val location = when {
+                lowerText.contains("office") -> "Office"
+                lowerText.contains("client") -> "Client Meeting"
+                lowerText.contains("site") -> "Site"
+                lowerText.contains("branch") -> "Branch"
+                lowerText.contains("demo") -> "Sprint Demo"
+                lowerText.contains("review") -> "Project Review"
+                lowerText.contains("call") || lowerText.contains("meeting") -> "Meeting"
+                else -> "Work Arrival"
+            }
 
-        return ExtractedSchedule(
-            targetHour = hour,
-            targetMinute = minute,
-            isTomorrow = isTomorrow,
-            targetLocationOrEvent = location,
-            rawMatchedPhrase = match.value
-        )
+            ExtractedSchedule(
+                targetHour = hour,
+                targetMinute = minute,
+                isTomorrow = isTomorrow,
+                targetLocationOrEvent = location,
+                rawMatchedPhrase = match.value
+            )
+        } catch (e: Exception) {
+            null
+        }
     }
 }

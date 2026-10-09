@@ -1,9 +1,12 @@
 package com.protocolx.inlo.automation
 
+import android.Manifest
 import android.content.ContentValues
 import android.content.Context
+import android.content.pm.PackageManager
 import android.provider.CalendarContract
 import android.util.Log
+import androidx.core.content.ContextCompat
 import com.protocolx.inlo.data.db.AppDatabase
 import com.protocolx.inlo.data.model.AutomationStatus
 import com.protocolx.inlo.data.model.AutomationType
@@ -23,6 +26,12 @@ object CalendarSyncDispatcher {
     ) {
         val appContext = context.applicationContext
 
+        // Check permission first
+        if (ContextCompat.checkSelfPermission(appContext, Manifest.permission.WRITE_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
+            Log.w(TAG, "Write calendar permission not granted yet, skipping native calendar insert")
+            return
+        }
+
         val targetCal = Calendar.getInstance().apply {
             if (schedule.isTomorrow) {
                 add(Calendar.DAY_OF_YEAR, 1)
@@ -33,27 +42,45 @@ object CalendarSyncDispatcher {
         }
 
         val endCal = (targetCal.clone() as Calendar).apply {
-            add(Calendar.HOUR_OF_DAY, 2) // Default 2 hour duration
+            add(Calendar.HOUR_OF_DAY, 2)
         }
 
         val title = "${schedule.targetLocationOrEvent} ($sender)"
 
         try {
+            var calendarId: Long = 1
+            // Attempt to query existing calendar ID safely
+            try {
+                val projection = arrayOf(CalendarContract.Calendars._ID)
+                val cursor = appContext.contentResolver.query(
+                    CalendarContract.Calendars.CONTENT_URI,
+                    projection,
+                    CalendarContract.Calendars.VISIBLE + " = 1",
+                    null,
+                    CalendarContract.Calendars._ID + " ASC"
+                )
+                cursor?.use {
+                    if (it.moveToFirst()) {
+                        calendarId = it.getLong(0)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.d(TAG, "Using default calendar ID: ${e.message}")
+            }
+
             val values = ContentValues().apply {
                 put(CalendarContract.Events.DTSTART, targetCal.timeInMillis)
                 put(CalendarContract.Events.DTEND, endCal.timeInMillis)
                 put(CalendarContract.Events.TITLE, title)
                 put(CalendarContract.Events.DESCRIPTION, note)
-                put(CalendarContract.Events.CALENDAR_ID, 1) // Primary calendar
+                put(CalendarContract.Events.CALENDAR_ID, calendarId)
                 put(CalendarContract.Events.EVENT_TIMEZONE, TimeZone.getDefault().id)
             }
 
             val uri = appContext.contentResolver.insert(CalendarContract.Events.CONTENT_URI, values)
             Log.d(TAG, "Calendar event inserted: $uri")
-        } catch (e: SecurityException) {
-            Log.w(TAG, "Calendar permission not granted yet: ${e.message}")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to insert calendar event: ${e.message}", e)
+        } catch (t: Throwable) {
+            Log.e(TAG, "Safe catch: Failed to insert calendar event: ${t.message}")
         }
 
         // Persist in local database record
@@ -67,8 +94,8 @@ object CalendarSyncDispatcher {
                 status = AutomationStatus.ACTIVE
             )
             AppDatabase.getInstance(appContext).automationDao().insert(record)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to record calendar automation: ${e.message}")
+        } catch (t: Throwable) {
+            Log.e(TAG, "Failed to record calendar automation: ${t.message}")
         }
     }
 }

@@ -5,7 +5,6 @@ app/build/
 bin/
 gen/
 out/
-*.apk
 *.ap_
 *.aab
 

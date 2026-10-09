@@ -123,9 +123,38 @@ fun RecapDialog(
                     Spacer(modifier = Modifier.height(14.dp))
                 }
 
+                // Executive Synthesis Section
+                if (report.executiveBrief.isNotBlank()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0x1814B8A6))
+                            .padding(12.dp)
+                    ) {
+                        Column {
+                            Text(
+                                text = "🤖 AI EXECUTIVE SYNTHESIS",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = TealPrimary,
+                                letterSpacing = 0.5.sp
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = report.executiveBrief,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = TextPrimary,
+                                lineHeight = 19.sp
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(14.dp))
+                }
+
                 // Key Takeaways Section
                 Text(
-                    text = "EXECUTIVE CATCH-UP DIGEST",
+                    text = "KEY TAKEAWAYS & HIGHLIGHTS",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextSecondary

@@ -1,8 +1,7 @@
 package com.protocolx.inlo.ui.screens
 
-import android.content.Context
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,13 +12,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Alarm
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
@@ -30,7 +30,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -74,10 +73,11 @@ import com.protocolx.inlo.ui.theme.TextSecondary
 fun DashboardScreen(
     summaries: List<MicroSummaryCard>,
     automations: List<ScheduledAutomation>,
+    onOpenSection: (PriorityTier) -> Unit,
+    onGlobalSummarize: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenAlarms: () -> Unit,
-    onGenerateCatchUp: () -> Unit,
-    onDismissCard: (String) -> Unit
+    onInjectDemo: () -> Unit
 ) {
     val context = LocalContext.current
     var hasNotificationPermission by remember { mutableStateOf(PermissionHelper.isNotificationAccessGranted(context)) }
@@ -95,12 +95,23 @@ fun DashboardScreen(
         }
     }
 
+    val p0Items = summaries.filter { it.tier == PriorityTier.P0_CRITICAL }
+    val p1Items = summaries.filter { it.tier == PriorityTier.P1_HIGH }
+    val p2Items = summaries.filter { it.tier == PriorityTier.P2_MEDIUM }
+    val p3Items = summaries.filter { it.tier == PriorityTier.P3_LOW }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("INLO", color = TextPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 22.sp, letterSpacing = 1.sp)
+                        Text(
+                            "INLO",
+                            color = TextPrimary,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 22.sp,
+                            letterSpacing = 1.sp
+                        )
                         Spacer(modifier = Modifier.width(10.dp))
                         Box(
                             modifier = Modifier
@@ -108,16 +119,38 @@ fun DashboardScreen(
                                 .background(Color(0x2014B8A6))
                                 .padding(horizontal = 7.dp, vertical = 2.dp)
                         ) {
-                            Text("LOCAL FIRST", color = TealAccent, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+                            Text(
+                                "LOCAL AI",
+                                color = TealAccent,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.5.sp
+                            )
                         }
                     }
                 },
                 actions = {
+                    // Demo Scenarios button for easy testing
+                    IconButton(onClick = onInjectDemo) {
+                        Icon(
+                            Icons.Default.PlayArrow,
+                            contentDescription = "Feed Demo Messages",
+                            tint = TealAccent
+                        )
+                    }
                     IconButton(onClick = onOpenAlarms) {
-                        Icon(Icons.Default.Alarm, contentDescription = "Alarms Hub", tint = TextPrimary)
+                        Icon(
+                            Icons.Default.Alarm,
+                            contentDescription = "Alarms Hub",
+                            tint = TextPrimary
+                        )
                     }
                     IconButton(onClick = onOpenSettings) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = TextPrimary)
+                        Icon(
+                            Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            tint = TextPrimary
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = BgDark)
@@ -130,8 +163,9 @@ fun DashboardScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .padding(horizontal = 16.dp)
+                .verticalScroll(rememberScrollState())
         ) {
-            // Permission Banner (if not granted)
+            // Permission Alert Banner (if needed)
             if (!hasNotificationPermission) {
                 Card(
                     modifier = Modifier
@@ -139,7 +173,9 @@ fun DashboardScreen(
                         .padding(vertical = 8.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = CardDefaults.cardColors(containerColor = Color(0xFF2C1E0A)),
-                    border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(P1Amber))
+                    border = CardDefaults.outlinedCardBorder().copy(
+                        brush = androidx.compose.ui.graphics.SolidColor(P1Amber)
+                    )
                 ) {
                     Row(
                         modifier = Modifier.padding(14.dp),
@@ -156,9 +192,7 @@ fun DashboardScreen(
                             )
                         }
                         Button(
-                            onClick = {
-                                PermissionHelper.openNotificationAccessSettings(context)
-                            },
+                            onClick = { PermissionHelper.openNotificationAccessSettings(context) },
                             colors = ButtonDefaults.buttonColors(containerColor = P1Amber),
                             shape = RoundedCornerShape(8.dp)
                         ) {
@@ -166,213 +200,285 @@ fun DashboardScreen(
                         }
                     }
                 }
+                Spacer(modifier = Modifier.height(4.dp))
             }
 
-            // Quick Actions Bar
-            Row(
+            // Global AI Summarize Hero Card (Outside App Sections)
+            Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF0F1E36)),
+                border = CardDefaults.outlinedCardBorder().copy(
+                    brush = androidx.compose.ui.graphics.SolidColor(TealPrimary)
+                )
             ) {
-                Button(
-                    onClick = onGenerateCatchUp,
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = TealPrimary),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Text("⚡ Recap (30s TL;DR)", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                }
-
-                OutlinedButton(
-                    onClick = onOpenAlarms,
-                    shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(1.dp, CardBorder)
-                ) {
-                    Icon(Icons.Default.Alarm, contentDescription = null, tint = TextPrimary, modifier = Modifier.height(16.dp))
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Alarms (${automations.size})", color = TextPrimary, fontSize = 12.sp)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            // Summaries Grouped by Tier
-            val p0Items = summaries.filter { it.tier == PriorityTier.P0_CRITICAL }
-            val p1Items = summaries.filter { it.tier == PriorityTier.P1_HIGH }
-            val p2Items = summaries.filter { it.tier == PriorityTier.P2_MEDIUM }
-            val p3Items = summaries.filter { it.tier == PriorityTier.P3_LOW }
-
-            if (summaries.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(bottom = 60.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(50))
-                                .background(Color(0x1514B8A6))
-                                .padding(20.dp)
-                        ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                Icons.Default.Notifications,
+                                Icons.Default.AutoAwesome,
                                 contentDescription = null,
-                                tint = TealPrimary,
-                                modifier = Modifier.height(36.dp).width(36.dp)
+                                tint = TealAccent,
+                                modifier = Modifier.height(20.dp).width(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "GLOBAL AI SUMMARIZER",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = TealAccent,
+                                letterSpacing = 0.5.sp
                             )
                         }
-                        Spacer(modifier = Modifier.height(14.dp))
-                        Text("INLO is Active & Listening", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            "Incoming notifications from WhatsApp, Slack, Gmail, etc. will be summarized and prioritized here in real time.",
-                            color = TextMuted,
-                            fontSize = 12.sp,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                            modifier = Modifier.padding(horizontal = 36.dp)
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            "🔒 0 bytes leave your device",
-                            color = TealPrimary,
+                            text = "${summaries.size} Total Items",
                             fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Bold,
+                            color = TextSecondary
                         )
                     }
-                }
-            } else {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    if (p0Items.isNotEmpty()) {
-                        item { TierHeader("🚨 P0 · CRITICAL ACTION", p0Items.size, P0Red) }
-                        items(p0Items, key = { it.id }) { item ->
-                            FlashcardItem(item = item, accentColor = P0Red, onDismiss = { onDismissCard(item.id) })
-                        }
-                    }
 
-                    if (p1Items.isNotEmpty()) {
-                        item { TierHeader("⚡ P1 · DECISIONS & TASKS", p1Items.size, P1Amber) }
-                        items(p1Items, key = { it.id }) { item ->
-                            FlashcardItem(item = item, accentColor = P1Amber, onDismiss = { onDismissCard(item.id) })
-                        }
-                    }
+                    Spacer(modifier = Modifier.height(6.dp))
 
-                    if (p2Items.isNotEmpty()) {
-                        item { TierHeader("📌 P2 · MENTIONS & QUESTIONS", p2Items.size, P2Teal) }
-                        items(p2Items, key = { it.id }) { item ->
-                            FlashcardItem(item = item, accentColor = P2Teal, onDismiss = { onDismissCard(item.id) })
-                        }
-                    }
+                    Text(
+                        text = "Intelligently summarize whole conversation across all priority boxes into an executive brief.",
+                        fontSize = 12.sp,
+                        color = TextPrimary,
+                        lineHeight = 17.sp
+                    )
 
-                    if (p3Items.isNotEmpty()) {
-                        item { TierHeader("💬 P3 · AMBIENT & BANTER", p3Items.size, P3Slate) }
-                        items(p3Items, key = { it.id }) { item ->
-                            FlashcardItem(item = item, accentColor = P3Slate, onDismiss = { onDismissCard(item.id) })
-                        }
-                    }
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                    item { Spacer(modifier = Modifier.height(30.dp)) }
+                    Button(
+                        onClick = onGlobalSummarize,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = TealPrimary),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = Color.Black,
+                            modifier = Modifier.height(16.dp).width(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "⚡ Global AI Summarize (${summaries.size} Messages)",
+                            color = Color.Black,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    }
                 }
             }
-        }
-    }
-}
 
-@Composable
-private fun TierHeader(title: String, count: Int, color: Color) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 10.dp, bottom = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(title, color = color, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold)
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(6.dp))
-                .background(color.copy(alpha = 0.2f))
-                .padding(horizontal = 6.dp, vertical = 2.dp)
-        ) {
-            Text("$count", color = color, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-        }
-    }
-}
+            Spacer(modifier = Modifier.height(10.dp))
 
-@Composable
-private fun FlashcardItem(
-    item: MicroSummaryCard,
-    accentColor: Color,
-    onDismiss: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = CardDark),
-        border = CardDefaults.outlinedCardBorder().copy(brush = androidx.compose.ui.graphics.SolidColor(accentColor.copy(alpha = 0.5f)))
-    ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            // Source & Sender Row
+            // Sections Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(accentColor.copy(alpha = 0.15f))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text(item.sourceApp, color = accentColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    }
+                Text(
+                    text = "PRIORITY SECTIONS (DECREASING)",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextSecondary,
+                    letterSpacing = 0.5.sp
+                )
+                Text(
+                    text = "Tap box to view & summarize",
+                    fontSize = 11.sp,
+                    color = TextMuted
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Box 1: P0 · Critical & Emergency Action (Decreasing Priority 1/5)
+            PrioritySectionBox(
+                emoji = "🚨",
+                tierTitle = "P0 · Critical Action & Emergency",
+                description = "Urgent directives, schedule shifts & blockers",
+                count = p0Items.size,
+                countUnit = "Alerts",
+                accentColor = P0Red,
+                latestPreview = p0Items.firstOrNull()?.catchyHeadline ?: "All clear · No active emergencies",
+                onClick = { onOpenSection(PriorityTier.P0_CRITICAL) }
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Box 2: P1 · High Priority & Decisions (Decreasing Priority 2/5)
+            PrioritySectionBox(
+                emoji = "⚡",
+                tierTitle = "P1 · Decisions & Tasks",
+                description = "Agreed consensus, deliverables & scheduled tasks",
+                count = p1Items.size,
+                countUnit = "Tasks",
+                accentColor = P1Amber,
+                latestPreview = p1Items.firstOrNull()?.catchyHeadline ?: "No pending high-priority deliverables",
+                onClick = { onOpenSection(PriorityTier.P1_HIGH) }
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Box 3: P2 · Mentions & Inquiries (Decreasing Priority 3/5)
+            PrioritySectionBox(
+                emoji = "📌",
+                tierTitle = "P2 · Mentions & Inquiries",
+                description = "Direct @mentions, collaboration & pending questions",
+                count = p2Items.size,
+                countUnit = "Inquiries",
+                accentColor = P2Teal,
+                latestPreview = p2Items.firstOrNull()?.catchyHeadline ?: "No questions or mentions waiting",
+                onClick = { onOpenSection(PriorityTier.P2_MEDIUM) }
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Box 4: P3 · Ambient & Banter (Decreasing Priority 4/5)
+            PrioritySectionBox(
+                emoji = "💬",
+                tierTitle = "P3 · Ambient & Banter",
+                description = "Casual chatter, newsletters & non-urgent rollups",
+                count = p3Items.size,
+                countUnit = "Updates",
+                accentColor = P3Slate,
+                latestPreview = p3Items.firstOrNull()?.catchyHeadline ?: "Inbox quiet · Zero ambient clutter",
+                onClick = { onOpenSection(PriorityTier.P3_LOW) }
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Box 5: Smart Automations & Alarms (Decreasing Priority 5/5)
+            PrioritySectionBox(
+                emoji = "⏰",
+                tierTitle = "Smart Automations & Alarms",
+                description = "Auto-scheduled wake-up alarms & calendar syncs",
+                count = automations.size,
+                countUnit = "Active",
+                accentColor = TealPrimary,
+                latestPreview = if (automations.isNotEmpty()) {
+                    "Auto-Set: ${automations.first().title} (${automations.first().scheduledTimeDisplay})"
+                } else {
+                    "No scheduled automations active"
+                },
+                onClick = onOpenAlarms
+            )
+
+            Spacer(modifier = Modifier.height(30.dp))
+        }
+    }
+}
+
+@Composable
+private fun PrioritySectionBox(
+    emoji: String,
+    tierTitle: String,
+    description: String,
+    count: Int,
+    countUnit: String,
+    accentColor: Color,
+    latestPreview: String,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = CardDark),
+        border = CardDefaults.outlinedCardBorder().copy(
+            brush = androidx.compose.ui.graphics.SolidColor(
+                if (count > 0) accentColor.copy(alpha = 0.8f) else CardBorder
+            )
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Header Row: Emoji + Title + Outside Count Badge
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(emoji, fontSize = 18.sp)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = item.sender,
+                        text = tierTitle,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary
                     )
                 }
 
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.height(24.dp).width(24.dp)
+                // Outside Count Badge
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(
+                            if (count > 0) accentColor.copy(alpha = 0.2f) else Color(0x15FFFFFF)
+                        )
+                        .padding(horizontal = 9.dp, vertical = 4.dp)
                 ) {
-                    Icon(Icons.Default.Close, contentDescription = "Dismiss", tint = TextMuted)
+                    Text(
+                        text = "$count $countUnit",
+                        color = if (count > 0) accentColor else TextMuted,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
-            // Punchy Headline
             Text(
-                text = item.catchyHeadline,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold,
-                color = TextPrimary
+                text = description,
+                fontSize = 11.sp,
+                color = TextMuted
             )
 
-            // Action Pill
-            if (item.actionPill != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(accentColor.copy(alpha = 0.15f))
-                        .padding(horizontal = 8.dp, vertical = 3.dp)
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // AI Preview Bar
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFF0F172A))
+                    .padding(horizontal = 10.dp, vertical = 8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = item.actionPill,
-                        color = accentColor,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold
+                        text = latestPreview,
+                        fontSize = 12.sp,
+                        color = if (count > 0) TextPrimary else TextMuted,
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f),
+                        fontWeight = if (count > 0) FontWeight.Medium else FontWeight.Normal
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = "Open Section",
+                        tint = if (count > 0) accentColor else TextMuted,
+                        modifier = Modifier.height(14.dp).width(14.dp)
                     )
                 }
             }

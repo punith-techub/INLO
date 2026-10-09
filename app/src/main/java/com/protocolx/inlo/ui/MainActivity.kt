@@ -19,9 +19,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import androidx.activity.compose.BackHandler
+import com.protocolx.inlo.data.model.PriorityTier
 import com.protocolx.inlo.ui.screens.AlarmsHistoryScreen
 import com.protocolx.inlo.ui.screens.DashboardScreen
+import com.protocolx.inlo.ui.screens.GlobalSummaryDialog
 import com.protocolx.inlo.ui.screens.RecapDialog
+import com.protocolx.inlo.ui.screens.SectionDetailScreen
 import com.protocolx.inlo.ui.screens.SettingsScreen
 import com.protocolx.inlo.ui.theme.INLOTheme
 import com.protocolx.inlo.ui.viewmodel.MainViewModel
@@ -29,7 +33,8 @@ import com.protocolx.inlo.ui.viewmodel.MainViewModel
 enum class Screen {
     DASHBOARD,
     SETTINGS,
-    ALARMS
+    ALARMS,
+    SECTION_DETAIL
 }
 
 class MainActivity : ComponentActivity() {
@@ -83,11 +88,21 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainContent(viewModel: MainViewModel) {
     var currentScreen by remember { mutableStateOf(Screen.DASHBOARD) }
+    var selectedTier by remember { mutableStateOf<PriorityTier?>(null) }
 
     val summaries by viewModel.activeSummaries.collectAsState()
     val automations by viewModel.automations.collectAsState()
     val settings by viewModel.settings.collectAsState()
     val currentRecap by viewModel.currentRecap.collectAsState()
+    val currentGlobalSummary by viewModel.currentGlobalSummary.collectAsState()
+    val sectionSummaries by viewModel.sectionSummaries.collectAsState()
+
+    // Handle system back navigation gracefully
+    if (currentScreen != Screen.DASHBOARD) {
+        BackHandler {
+            currentScreen = Screen.DASHBOARD
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         when (currentScreen) {
@@ -95,10 +110,28 @@ fun MainContent(viewModel: MainViewModel) {
                 DashboardScreen(
                     summaries = summaries,
                     automations = automations,
+                    onOpenSection = { tier ->
+                        selectedTier = tier
+                        currentScreen = Screen.SECTION_DETAIL
+                    },
+                    onGlobalSummarize = { viewModel.generateGlobalSummary() },
                     onOpenSettings = { currentScreen = Screen.SETTINGS },
                     onOpenAlarms = { currentScreen = Screen.ALARMS },
-                    onGenerateCatchUp = { viewModel.generateCatchUpRecap("30-Second Catch-Up") },
-                    onDismissCard = { viewModel.dismissCard(it) }
+                    onInjectDemo = { viewModel.injectDemoScenarios() }
+                )
+            }
+
+            Screen.SECTION_DETAIL -> {
+                val tier = selectedTier ?: PriorityTier.P0_CRITICAL
+                val tierMessages = summaries.filter { it.tier == tier }
+                SectionDetailScreen(
+                    tier = tier,
+                    messages = tierMessages,
+                    sectionSummary = sectionSummaries[tier],
+                    onSummarizeBox = { viewModel.generateBoxSummary(tier) },
+                    onDismissSummary = { viewModel.dismissBoxSummary(tier) },
+                    onDismissMessage = { viewModel.dismissCard(it) },
+                    onBack = { currentScreen = Screen.DASHBOARD }
                 )
             }
 
@@ -130,7 +163,15 @@ fun MainContent(viewModel: MainViewModel) {
             }
         }
 
-        // Show Recap Dialog when active
+        // Show Global Summary Dialog when triggered
+        currentGlobalSummary?.let { summary ->
+            GlobalSummaryDialog(
+                summary = summary,
+                onDismiss = { viewModel.dismissGlobalSummary() }
+            )
+        }
+
+        // Show Catch-Up Recap Dialog when active
         currentRecap?.let { report ->
             RecapDialog(
                 report = report,
@@ -139,3 +180,4 @@ fun MainContent(viewModel: MainViewModel) {
         }
     }
 }
+

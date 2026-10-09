@@ -61,6 +61,18 @@ Every notification is instantly sorted into 4 clear levels:
 
 ---
 
+## 🛠️ Tech Stack & Architecture
+
+- **Language & Runtime:** Kotlin 2.0.21, OpenJDK 17, Android SDK 34 (minSdk 26, targetSdk 34)
+- **UI Framework:** Jetpack Compose + Material 3 (Modern Minimalist Cockpit)
+- **Background Notification Interception:** Android `NotificationListenerService` (`android.permission.BIND_NOTIFICATION_LISTENER_SERVICE`)
+- **System Automation APIs:** Android `AlarmClock` API, `AlarmManager` (Exact Alarms), `CalendarContract` (Events Sync)
+- **Local Persistence & Memory:** Encrypted Room SQLite (`androidx.room` + KSP), `SharedPreferences` + `DataStore`
+- **Asynchronous Processing:** Kotlin Coroutines (`Dispatchers.IO`), Reactive `StateFlow`
+- **Privacy Enforcement:** Zero-Network Architecture (`android.permission.INTERNET` omitted)
+
+---
+
 ## 📲 How to Install & Setup
 
 1. **Download the APK:** Click on [**`INLO-v1.0.1.apk`**](INLO-v1.0.1.apk) right here in the repository to download it.
